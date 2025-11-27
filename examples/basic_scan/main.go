@@ -25,7 +25,7 @@ func main() {
 	fmt.Println("Starting scan...")
 
 	start := time.Now()
-	err = eng.ScanFolder(ctx, "./photos", nil)
+	err = eng.ScanFolder(ctx, "/home/cpluspluser/Pictures/Images", nil)
 	if err != nil {
 		log.Fatal("Scan failed:", err)
 	}

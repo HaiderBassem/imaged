@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -554,45 +555,96 @@ func (e *Engine) CleanDuplicates(options api.CleanOptions) (*api.CleanReport, er
 	report := &api.CleanReport{}
 	startTime := time.Now()
 
-	// Find all duplicates (exact and near)
+	// Exact duplicates only
 	exactGroups, err := e.FindExactDuplicates()
 	if err != nil {
-		return nil, fmt.Errorf("failed to find exact duplicates: %w", err)
+		return nil, err
 	}
 
-	nearGroups, err := e.FindNearDuplicates(options.MaxSimilarityThreshold)
-	if err != nil {
-		return nil, fmt.Errorf("failed to find near duplicates: %w", err)
-	}
+	report.TotalProcessed = len(exactGroups)
 
-	allGroups := append(exactGroups, nearGroups...)
-	report.TotalProcessed = len(allGroups)
+	moved, freed := e.processExactGroups(exactGroups, options)
 
-	// Process each duplicate group
-	for _, group := range allGroups {
-		if options.DryRun {
-			e.logger.Infof("DRY RUN: Would process group %s (%d duplicates)",
-				group.GroupID, len(group.DuplicateIDs))
-			continue
-		}
+	report.MovedFiles = moved
+	report.FreedSpace = freed
 
-		moved, err := e.processDuplicateGroup(group, options)
-		if err != nil {
-			e.logger.Warnf("Failed to process group %s: %v", group.GroupID, err)
-			report.Errors++
-			continue
-		}
-
-		report.MovedFiles += moved
-	}
-
-	report.FreedSpace = e.calculateFreedSpace(report.MovedFiles)
-	duration := time.Since(startTime)
-
-	e.logger.Infof("Clean completed: %d files moved, %d errors, %s freed in %v",
-		report.MovedFiles, report.Errors, formatBytes(report.FreedSpace), duration)
+	e.logger.Infof("Clean completed: %d files moved, %s freed in %v",
+		report.MovedFiles,
+		formatBytes(report.FreedSpace),
+		time.Since(startTime),
+	)
 
 	return report, nil
+}
+
+func (e *Engine) verifyRealBinaryMatch(main api.ImageID, duplicates []api.ImageID) (bool, error) {
+	mainFP, err := e.index.GetFingerprint(main)
+	if err != nil {
+		return false, err
+	}
+
+	mainBytes, err := os.ReadFile(mainFP.Metadata.Path)
+	if err != nil {
+		return false, err
+	}
+
+	for _, id := range duplicates {
+		fp, err := e.index.GetFingerprint(id)
+		if err != nil {
+			return false, err
+		}
+
+		dupBytes, err := os.ReadFile(fp.Metadata.Path)
+		if err != nil {
+			return false, err
+		}
+
+		if !bytes.Equal(mainBytes, dupBytes) {
+			return false, nil
+		}
+	}
+
+	return true, nil
+}
+
+func (e *Engine) processExactGroups(groups []api.DuplicateGroup, options api.CleanOptions) (int, int64) {
+	var moved int
+	var freed int64
+
+	for _, group := range groups {
+
+		ok, err := e.verifyRealBinaryMatch(group.MainImage, group.DuplicateIDs)
+		if err != nil || !ok {
+			continue
+		}
+
+		for _, dupID := range group.DuplicateIDs {
+			fp, err := e.index.GetFingerprint(dupID)
+			if err != nil {
+				continue
+			}
+
+			src := fp.Metadata.Path
+			dstDir := filepath.Join(options.OutputDir, group.GroupID)
+			_ = os.MkdirAll(dstDir, 0755)
+			dst := filepath.Join(dstDir, filepath.Base(src))
+
+			if options.DryRun {
+				e.logger.Infof("DRY RUN: would move %s -> %s", src, dst)
+				continue
+			}
+
+			if err := os.Rename(src, dst); err != nil {
+				e.logger.Warnf("Failed to move %s: %v", src, err)
+				continue
+			}
+
+			moved++
+			freed += fp.Metadata.SizeBytes
+		}
+	}
+
+	return moved, freed
 }
 
 // processDuplicateGroup handles the movement/deletion of duplicate files in a group
