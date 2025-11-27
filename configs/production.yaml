@@ -1,0 +1,41 @@
+engine:
+  index_path: "/data/imaged.db"
+  num_workers: 8
+  use_gpu: false
+  log_level: "info"
+  max_memory_mb: 2048
+
+hashing:
+  compute_ahash: true
+  compute_phash: true
+  compute_dhash: true
+  compute_whash: true
+  hash_size: 16
+
+quality:
+  detailed_analysis: true
+  sharpness_threshold: 0.15
+  noise_threshold: 0.25
+  min_exposure: 0.15
+  max_exposure: 0.85
+  min_contrast: 0.25
+
+similarity:
+  min_similarity: 0.85
+  use_feature_vectors: false
+  ahash_weight: 0.15
+  phash_weight: 0.45
+  dhash_weight: 0.25
+  whash_weight: 0.15
+
+logging:
+  level: "info"
+  file: "/var/log/imaged.log"
+  max_size_mb: 100
+  max_backups: 5
+  max_age_days: 30
+
+performance:
+  batch_size: 100
+  cache_size_mb: 512
+  io_timeout_seconds: 30
