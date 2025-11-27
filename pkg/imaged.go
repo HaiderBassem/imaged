@@ -6,11 +6,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/HaiderBassem/imaged/internal/engine"
 	"github.com/HaiderBassem/imaged/internal/quality"
 	"github.com/HaiderBassem/imaged/internal/scanner"
 	"github.com/HaiderBassem/imaged/internal/similarity"
 	"github.com/HaiderBassem/imaged/pkg/api"
+	"github.com/HaiderBassem/imaged/pkg/engine"
 )
 
 // Re-export commonly used types and functions for public API

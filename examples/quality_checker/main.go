@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/HaiderBassem/imaged/internal/engine"
+	"github.com/HaiderBassem/imaged/pkg/engine"
 )
 
 func main() {

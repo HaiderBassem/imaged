@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/HaiderBassem/imaged/internal/engine"
+	"github.com/HaiderBassem/imaged/pkg/engine"
 	"github.com/urfave/cli/v2"
 )
 
