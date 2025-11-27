@@ -14,4 +14,4 @@ A high-performance Go library for image deduplication, quality analysis, and man
 ## Installation
 
 ```bash
-go get github.com/yourusername/imaged# imaged
+go get github.com/HaiderBassem/imaged# imaged
