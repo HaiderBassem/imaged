@@ -555,26 +555,77 @@ func (e *Engine) CleanDuplicates(options api.CleanOptions) (*api.CleanReport, er
 	report := &api.CleanReport{}
 	startTime := time.Now()
 
-	// Exact duplicates only
+	// 1) Find exact duplicates
 	exactGroups, err := e.FindExactDuplicates()
 	if err != nil {
 		return nil, err
 	}
 
-	report.TotalProcessed = len(exactGroups)
+	// 2) Find near duplicates (cropped, resized, zoomed...)
+	nearGroups, err := e.FindNearDuplicates(options.MaxSimilarityThreshold)
+	if err != nil {
+		return nil, err
+	}
 
-	moved, freed := e.processExactGroups(exactGroups, options)
+	report.TotalProcessed = len(exactGroups) + len(nearGroups)
 
-	report.MovedFiles = moved
-	report.FreedSpace = freed
+	movedExact, freedExact := e.processExactGroups(exactGroups, options)
+
+	// process near-duplicate groups the same way
+	movedNear, freedNear := e.processNearGroups(nearGroups, options)
+
+	report.MovedFiles = movedExact + movedNear
+	report.FreedSpace = freedExact + freedNear
 
 	e.logger.Infof("Clean completed: %d files moved, %s freed in %v",
 		report.MovedFiles,
-		formatBytes(report.FreedSpace),
+		FormatBytes(report.FreedSpace),
 		time.Since(startTime),
 	)
 
 	return report, nil
+}
+
+// processNearGroups handles the movement/deletion of near-duplicate files in a group
+func (e *Engine) processNearGroups(groups []api.DuplicateGroup, options api.CleanOptions) (int, int64) {
+	var moved int
+	var freed int64
+
+	for _, group := range groups {
+		for _, dupID := range group.DuplicateIDs {
+			fp, err := e.index.GetFingerprint(dupID)
+			if err != nil {
+				continue
+			}
+
+			// Skip if quality is below threshold
+			if fp.Quality.FinalScore < options.MinQualityScore {
+				e.logger.Debugf("Skipping low quality near-duplicate image: %s (score: %.1f)",
+					fp.Metadata.Path, fp.Quality.FinalScore)
+				continue
+			}
+
+			src := fp.Metadata.Path
+			dstDir := filepath.Join(options.OutputDir, group.GroupID)
+			_ = os.MkdirAll(dstDir, 0755)
+			dst := filepath.Join(dstDir, filepath.Base(src))
+
+			if options.DryRun {
+				e.logger.Infof("DRY RUN: would move near-duplicate %s -> %s", src, dst)
+				continue
+			}
+
+			if err := os.Rename(src, dst); err != nil {
+				e.logger.Warnf("Failed to move near-duplicate %s: %v", src, err)
+				continue
+			}
+
+			moved++
+			freed += fp.Metadata.SizeBytes
+		}
+	}
+
+	return moved, freed
 }
 
 func (e *Engine) verifyRealBinaryMatch(main api.ImageID, duplicates []api.ImageID) (bool, error) {
@@ -648,7 +699,7 @@ func (e *Engine) processExactGroups(groups []api.DuplicateGroup, options api.Cle
 }
 
 // processDuplicateGroup handles the movement/deletion of duplicate files in a group
-func (e *Engine) processDuplicateGroup(group api.DuplicateGroup, options api.CleanOptions) (int, error) {
+func (e *Engine) ProcessDuplicateGroup(group api.DuplicateGroup, options api.CleanOptions) (int, error) {
 	moved := 0
 
 	for _, duplicateID := range group.DuplicateIDs {
@@ -665,7 +716,7 @@ func (e *Engine) processDuplicateGroup(group api.DuplicateGroup, options api.Cle
 		}
 
 		if options.MoveDuplicates {
-			err := e.moveDuplicate(fingerprint, options.OutputDir, group.GroupID)
+			err := e.MoveDuplicate(fingerprint, options.OutputDir, group.GroupID)
 			if err != nil {
 				return moved, fmt.Errorf("failed to move duplicate %s: %w", duplicateID, err)
 			}
@@ -683,7 +734,7 @@ func (e *Engine) processDuplicateGroup(group api.DuplicateGroup, options api.Cle
 }
 
 // moveDuplicate moves a duplicate file to the output directory
-func (e *Engine) moveDuplicate(fp *api.ImageFingerprint, outputDir string, groupID string) error {
+func (e *Engine) MoveDuplicate(fp *api.ImageFingerprint, outputDir string, groupID string) error {
 	sourcePath := fp.Metadata.Path
 	filename := filepath.Base(sourcePath)
 	destPath := filepath.Join(outputDir, groupID, filename)
@@ -850,7 +901,7 @@ func generateImageID(path string) string {
 }
 
 // formatBytes converts byte count to human-readable string
-func formatBytes(bytes int64) string {
+func FormatBytes(bytes int64) string {
 	const unit = 1024
 	if bytes < unit {
 		return fmt.Sprintf("%d B", bytes)

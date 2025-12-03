@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Deduplication Report</title>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2c3e50;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --light-bg: #f8f9fa;
+            --border-color: #dee2e6;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .header .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            border-left: 4px solid var(--primary-color);
+        }
+        
+        .stat-card.highlight {
+            border-left-color: var(--success-color);
+            background: linear-gradient(135deg, #fff, #f8fff9);
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--secondary-color);
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .section {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+        
+        .section-title {
+            font-size: 1.5rem;
+            color: var(--secondary-color);
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--light-bg);
+        }
+        
+        .duplicate-group {
+            background: var(--light-bg);
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            border-left: 4px solid var(--warning-color);
+        }
+        
+        .duplicate-group.exact {
+            border-left-color: var(--danger-color);
+        }
+        
+        .group-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        
+        .group-type {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .type-exact {
+            background: var(--danger-color);
+            color: white;
+        }
+        
+        .type-near {
+            background: var(--warning-color);
+            color: white;
+        }
+        
+        .confidence {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        .file-list {
+            max-height: 200px;
+            overflow-y: auto;
+            background: white;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+        
+        .recommendations {
+            background: linear-gradient(135deg, #fff8e1, #fff);
+            border-left: 4px solid var(--warning-color);
+        }
+        
+        .recommendation {
+            display: flex;
+            align-items: start;
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background: white;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .rec-icon {
+            font-size: 1.5rem;
+            margin-right: 1rem;
+        }
+        
+        .rec-content h4 {
+            color: var(--secondary-color);
+            margin-bottom: 0.5rem;
+        }
+        
+        .rec-content p {
+            color: #666;
+            margin-bottom: 0.5rem;
+        }
+        
+        .rec-action {
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Image Deduplication Report</h1>
+            <div class="subtitle">
+                Generated on 2025-11-30 04:20:17 | Scan ID: export_20251130_042017
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number">624</div>
+                <div class="stat-label">Total Files Scanned</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">624</div>
+                <div class="stat-label">Images Processed</div>
+            </div>
+            <div class="stat-card highlight">
+                <div class="stat-number">0</div>
+                <div class="stat-label">Exact Duplicate Groups</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">0</div>
+                <div class="stat-label">Near-Duplicate Groups</div>
+            </div>
+        </div>
+
+        
+
+        <div class="section recommendations">
+            <h2 class="section-title">💡 Recommendations</h2>
+            
+            
+
+            
+
+            <div class="recommendation">
+                <div class="rec-icon">📁</div>
+                <div class="rec-content">
+                    <h4>Organize Your Library</h4>
+                    <p>Consider organizing images into folders based on date, event, or content.</p>
+                    <div class="rec-action">Action: Use clustering features to organize</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">📈 Scan Information</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div>
+                    <strong>Scan Duration:</strong> 1h0m0s<br>
+                    <strong>Started:</strong> 2025-11-30 03:20:17<br>
+                    <strong>Completed:</strong> 2025-11-30 04:20:17
+                </div>
+                <div>
+                    <strong>Files Skipped:</strong> 0<br>
+                    <strong>Total Clusters:</strong> 0<br>
+                    <strong>Generated:</strong> 2025-11-30 04:20:17
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Generated by <strong>ImageD</strong> - Professional Image Management Tool</p>
+            <p>Report generated on 2025-11-30 04:20:17</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -9,17 +9,71 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/HaiderBassem/imaged/cmd/imaged-cli/commands"
 	"github.com/HaiderBassem/imaged/pkg/api"
 	"github.com/HaiderBassem/imaged/pkg/engine"
 	"github.com/urfave/cli/v2"
 )
 
 func main() {
+
 	app := &cli.App{
 		Name:    "imaged",
 		Version: "1.0.0",
 		Usage:   "Professional image deduplication and management tool",
 		Commands: []*cli.Command{
+			{
+				Name:  "cluster",
+				Usage: "Cluster similar images into groups",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "path",
+						Aliases:  []string{"p"},
+						Usage:    "Directory path to cluster",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:    "index",
+						Aliases: []string{"i"},
+						Usage:   "Index database path",
+						Value:   "imaged.db",
+					},
+					&cli.Float64Flag{
+						Name:    "threshold",
+						Aliases: []string{"t"},
+						Usage:   "Similarity threshold (0.0 - 1.0)",
+						Value:   0.9,
+					},
+				},
+				Action: commands.ClusterCommand,
+			},
+
+			{
+				Name:  "export",
+				Usage: "Export scan report",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "index",
+						Aliases: []string{"i"},
+						Usage:   "Index database path",
+						Value:   "imaged.db",
+					},
+					&cli.StringFlag{
+						Name:     "format",
+						Aliases:  []string{"f"},
+						Usage:    "Report format: json | html | text",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:     "output",
+						Aliases:  []string{"o"},
+						Usage:    "Output file path",
+						Required: true,
+					},
+				},
+				Action: commands.ExportCommand,
+			},
+
 			{
 				Name:  "scan",
 				Usage: "Scan a directory and index images",
@@ -43,11 +97,12 @@ func main() {
 						Value:   4,
 					},
 				},
-				Action: scanCommand,
+				Action: commands.ScanCommand,
 			},
+
 			{
 				Name:  "find-duplicates",
-				Usage: "Find duplicate images",
+				Usage: "Find exact and near duplicate images",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:    "index",
@@ -58,12 +113,19 @@ func main() {
 					&cli.Float64Flag{
 						Name:    "threshold",
 						Aliases: []string{"t"},
-						Usage:   "Similarity threshold (0.0-1.0)",
+						Usage:   "Similarity threshold (0.0–1.0)",
 						Value:   0.9,
 					},
+					&cli.BoolFlag{
+						Name:    "exact-only",
+						Aliases: []string{"e"},
+						Usage:   "Only search for exact duplicates",
+						Value:   false,
+					},
 				},
-				Action: findDuplicatesCommand,
+				Action: commands.FindDuplicatesCommand,
 			},
+
 			{
 				Name:  "clean",
 				Usage: "Clean duplicate images",
@@ -103,8 +165,9 @@ func main() {
 						Value: true,
 					},
 				},
-				Action: cleanCommand,
+				Action: commands.CleanCommand,
 			},
+
 			{
 				Name:  "quality",
 				Usage: "Analyze image quality",
@@ -116,8 +179,9 @@ func main() {
 						Required: true,
 					},
 				},
-				Action: qualityCommand,
+				Action: commands.QualityCommand,
 			},
+
 			{
 				Name:  "stats",
 				Usage: "Show database statistics",
@@ -281,7 +345,7 @@ func cleanCommand(c *cli.Context) error {
 	fmt.Printf("\nClean operation completed:\n")
 	fmt.Printf("  Total groups processed: %d\n", report.TotalProcessed)
 	fmt.Printf("  Files moved/deleted: %d\n", report.MovedFiles)
-	fmt.Printf("  Storage freed: %s\n", formatBytes(report.FreedSpace))
+	fmt.Printf("  Storage freed: %s\n", engine.FormatBytes(report.FreedSpace))
 	fmt.Printf("  Errors: %d\n", report.Errors)
 
 	if dryRun {
@@ -361,8 +425,8 @@ func statsCommand(c *cli.Context) error {
 
 	fmt.Printf("\nIndex Statistics:\n")
 	fmt.Printf("  Total images: %d\n", stats.TotalImages)
-	fmt.Printf("  Total size: %s\n", formatBytes(stats.TotalSizeBytes))
-	fmt.Printf("  Index size: %s\n", formatBytes(stats.IndexSizeBytes))
+	fmt.Printf("  Total size: %s\n", engine.FormatBytes(stats.TotalSizeBytes))
+	fmt.Printf("  Index size: %s\n", engine.FormatBytes(stats.IndexSizeBytes))
 	fmt.Printf("  Average quality: %.1f/100\n", stats.AverageQuality)
 	fmt.Printf("  Duplicate groups: %d\n", stats.DuplicateGroups)
 
@@ -391,17 +455,4 @@ func setupInterruptHandler(cancel context.CancelFunc) {
 		fmt.Println("\nReceived interrupt signal, stopping...")
 		cancel()
 	}()
-}
-
-func formatBytes(bytes int64) string {
-	const unit = 1024
-	if bytes < unit {
-		return fmt.Sprintf("%d B", bytes)
-	}
-	div, exp := int64(unit), 0
-	for n := bytes / unit; n >= unit; n /= unit {
-		div *= unit
-		exp++
-	}
-	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
 }

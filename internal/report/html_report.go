@@ -37,6 +37,7 @@ func (h *HTMLReportGenerator) Generate(scanReport *api.ScanReport, outputPath st
 		"formatBytes": humanize.Bytes,
 		"formatTime":  formatTime,
 		"percent":     percent,
+		"mul":         func(a, b float64) float64 { return a * b },
 	}).Parse(htmlTemplate))
 
 	file, err := os.Create(outputPath)
@@ -342,7 +343,7 @@ const htmlTemplate = `<!DOCTYPE html>
                     <span class="group-type {{if eq .Reason "exact"}}type-exact{{else}}type-near{{end}}">
                         {{.Reason}} duplicate
                     </span>
-                    <span class="confidence">Confidence: {{printf "%.0f" (.Confidence | percent 1)}}%</span>
+                    <span class="confidence">Confidence: {{printf "%.0f" (mul .Confidence 100)}}%}}%}}%</span>
                 </div>
                 <div class="group-info">
                     <strong>Main Image:</strong> {{.MainImage}}<br>

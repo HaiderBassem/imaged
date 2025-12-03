@@ -88,7 +88,6 @@ type ScanProgress struct {
 	Percentage  float64 `json:"percentage"`
 }
 
-// ScanReport provides comprehensive results of a scanning operation
 type ScanReport struct {
 	ScanID              string           `json:"scan_id"`
 	TotalFiles          int              `json:"total_files"`
@@ -101,6 +100,7 @@ type ScanReport struct {
 	ScanDuration        time.Duration    `json:"scan_duration"`
 	StartedAt           time.Time        `json:"started_at"`
 	CompletedAt         time.Time        `json:"completed_at"`
+	GeneratedAt         time.Time        `json:"generated_at"`
 }
 
 // CleanOptions configures the behavior of duplicate cleaning operations

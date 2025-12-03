@@ -1,0 +1,33 @@
+{
+  "scan_id": "export_20251130_041809",
+  "total_files": 1248,
+  "processed_images": 1248,
+  "skipped_files": 0,
+  "exact_duplicate_count": 0,
+  "near_duplicate_count": 0,
+  "duplicate_groups": null,
+  "clusters": null,
+  "scan_duration": 3600000000000,
+  "started_at": "2025-11-30T03:18:09.048449413+03:00",
+  "completed_at": "2025-11-30T04:18:09.048449696+03:00",
+  "generated_at": "2025-11-30T04:18:09.048453145+03:00",
+  "version": "1.0",
+  "statistics": {
+    "total_size_mb": 0,
+    "average_file_size_mb": 0,
+    "average_quality": 0,
+    "quality_distribution": {},
+    "format_distribution": {},
+    "size_distribution": {}
+  },
+  "recommendations": [
+    {
+      "type": "quality_audit",
+      "priority": "low",
+      "description": "Large image collection detected",
+      "action": "Consider running quality analysis on all images",
+      "impact": "quality",
+      "confidence": 0.6
+    }
+  ]
+}
